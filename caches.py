@@ -3,12 +3,16 @@ import re
 from urllib.parse import *
 import zlib
 
+from datetime import datetime,timedelta
+
 import pickle
 
 class DiskCache:
-	def __init__(self,cache_dir = 'cache',max_length = 225):
+	def __init__(self,cache_dir = 'cache',max_length = 225,expires = timedelta(days = 30)):
 		self.cache_dir = cache_dir
 		self.max_length = max_length
+
+		self.expires = expires
 
 	def url_to_path(self,url):
 
@@ -26,7 +30,7 @@ class DiskCache:
 
 		filename = re.sub(r'[^0-9a-zA-Z\-.,;_ ]','_',filename)
 
-		filename = '/'.join(seg[:225] for seg in filename.split('/') ) 
+		filename = '_'.join(seg[:225] for seg in filename.split('/') ) 
 
 		return filename
 
@@ -36,17 +40,39 @@ class DiskCache:
 
 		if os.path.exists(path):
 			with open(path,'rb') as rp:
-				return pickle.loads(zlib.decompress(rp.read()))
 
+				data = zlib.decompress(rp.read())
+
+				result,timestamp = pickle.loads(data) 
+				if self.has_expired(timestamp):
+					raise KeyError('it has been expires')
+					pass
+				else:
+					return	result
 		else:
 			raise KeyError(url + 'dont exsits')
 
 	def __setitem__(self,url,result):
 
 		path = self.url_to_path(url)
+
+		timestamp = datetime.utcnow()
+		data = pickle.dumps((result,timestamp))
 		with open(path,'wb') as wp:
 
-			wp.write(zlib.compress(pickle.dumps(result)))
+			wp.write(zlib.compress(data))
+
+	def has_expired(self,timestamp):
+
+		#返回是否已经过期的信息
+		return datetime.utcnow() > timestamp+self.expires
+
+
+
+
+
+
+
 
 
 
