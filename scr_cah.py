@@ -1,8 +1,8 @@
-import caches
+import dbcaches
 
 from datetime import datetime,timedelta
 
-cache = caches.DiskCache(expires = timedelta(seconds = 5))
+cache = dbcaches.DiskCache(expires = timedelta(seconds = 5))
 url = 'www.baidu.com/rit/err/ss/'
 
 html = 'this  is a test wnbe'
@@ -20,6 +20,8 @@ import time
 
 time.sleep(8)
 t2 = cache[url]
+
+print(t2)
 
 
 
