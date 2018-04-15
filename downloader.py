@@ -3,6 +3,7 @@ import urllib
 from urllib import parse
 import time
 from datetime import datetime
+import dbcaches
 
 class Throttle:
 	''' add a delay between downloads to smoe domain '''
@@ -19,8 +20,6 @@ class Throttle:
 
 		if self.delay>0 and last_accessed is not None:
 
-			#说明最近这个url被访问过
-
 			sleep_sec = self.delay - (datetime.now()-last_accessed).seconds
 
 			if sleep_sec > 0 :
@@ -30,8 +29,8 @@ class Throttle:
 
 class Downloader:
 
-	def __init__(self,url,headers = [('User_agent','Moll')],proxy = {},num_retries = 3,delay = 5,cache = None):
-		self.url = url
+	def __init__(self,headers = [('User_agent','Moll')],proxy = {},num_retries = 3,delay = 5,cache = None):
+		
 		self.headers = headers
 		self.proxy = proxy
 		self.num_retries = num_retries
@@ -43,41 +42,43 @@ class Downloader:
 		result = None
 		if self.cache is None:
 
-			result = self.download(self.)
+			result = self.download(url,self.headers,self.proxy,self.num_retries)
+
+			self.cache[url] = result
+
+		elif self.cache is not None:
+			try:
+				result = self.cache[url]
+			except KeyError:
+				print('there is no cache yet')
+				result = self.download(url,self.headers,self.proxy,self.num_retries)
+				self.cache[url] = result
+
+		return result
+
+	def download(self,url,headers,proxy,num_retries):
+		print('downloading:',url)
+		
+		self.thethrottle.wait(url)
+		opener = request.FancyURLopener(proxy)
+		opener.addheaders = headers
+		try:
+			with opener.open(url) as f:
+				html = f.read().decode()
+		except urllib.error.URLError as e:
+			print('downloading failes:',e.reason)
+			html = None
+			if num_retries > 0:
+				if hasattr(e,'code') and 500 <= e.code <600:
+					Download(url,headers,proxy,num_retries -1)
+
+		return html
 
 
 
+thedownload = Downloader(cache = dbcaches.DiskCache())
 
-
-def Download(url,headers = ('User_agent','Moll'),proxy = {},num_retries = 10,delay = 5):
-
-	print('downloading:',url)
-	thethrottle = Throttle(delay)
-	thethrottle.wait(url)
-
-	opener = request.FancyURLopener(proxy)
-	opener.addheaders = [headers]
-
-	try:
-		with opener.open(url) as f:
-
-			html = f.read().decode()
-	except urllib.error.URLError as e:
-		print('downloading failes:',e.reason)
-		html = None
-
-		if num_retries > 0:
-			if hasattr(e,'code') and 500 <= e.code <600:
-
-
-				Download(url,headers,proxy,num_retries -1)
-
-	return html
-
-
-#以下是程序正文
-
-html = Download('https://baike.baidu.com/item/%E7%A9%BA%E4%B8%AD%E5%AE%A2%E8%BD%A6%E5%85%AC%E5%8F%B8')
+html = thedownload('http://www.sohu.com')
 
 print(html)
 
